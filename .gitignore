@@ -16,3 +16,6 @@ native-host/unregister.cmd
 .impeccable/
 .claude/
 *.log
+
+# Kept locally for the author's own website
+docs/case-study.md

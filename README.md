@@ -2,7 +2,9 @@
 
 A download manager for Windows, built with Electron, aria2 and yt-dlp. It handles HTTP, HTTPS, BitTorrent magnet links, `.torrent` files, and video pages without DRM.
 
-The design decisions behind it are in the [case study](docs/case-study.md) (Thai).
+![The Speed Downloader window with downloads in progress, paused, waiting, needing attention and finished](docs/images/v1.6.2-main-light.png)
+
+The research behind its next features is in [docs/research](docs/research/README.md) (Thai).
 
 ## Install and open
 
