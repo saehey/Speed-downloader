@@ -1,0 +1,88 @@
+{
+  "name": "speed-downloader",
+  "productName": "Speed Downloader",
+  "version": "1.6.3",
+  "private": true,
+  "description": "A download manager for Windows, built on aria2.",
+  "author": "saehey",
+  "license": "MIT",
+  "main": "dist/main.cjs",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "setup-browser": "node scripts/setup-browser.mjs",
+    "start": "npm run build && electron .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --test-concurrency=1 test/*.test.ts",
+    "smoke": "npm run build && electron test/smoke-main.cjs",
+    "package": "npm run build && npm run setup-browser && node scripts/fetch-yt-dlp.mjs && node scripts/prepare-package.mjs && electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "com.speeddownloader.app",
+    "productName": "Speed Downloader",
+    "icon": "build/icon.png",
+    "electronDist": "node_modules/electron/dist",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "package.json",
+      "!dist/**/*.map"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/aria2c.exe",
+        "to": "aria2c.exe"
+      },
+      {
+        "from": "resources/aria2-licence",
+        "to": "aria2-licence"
+      },
+      {
+        "from": "resources/yt-dlp/yt-dlp.exe",
+        "to": "yt-dlp.exe"
+      },
+      {
+        "from": "resources/yt-dlp/SOURCE.txt",
+        "to": "yt-dlp-SOURCE.txt"
+      },
+      {
+        "from": "native-host/build/downloader-host.exe",
+        "to": "native-host/downloader-host.exe"
+      },
+      {
+        "from": "extension",
+        "to": "extension"
+      }
+    ],
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "onlyLoadAppFromAsar": true
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "SpeedDownloader-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Speed Downloader",
+      "include": "build/installer.nsh"
+    }
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "electron": "45.2.2",
+    "electron-builder": "26.18.0",
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2"
+  }
+}

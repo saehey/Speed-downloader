@@ -1,0 +1,18 @@
+# Dependencies and build output
+node_modules/
+dist/
+release/
+
+# Made by scripts/prepare-package.mjs and scripts/fetch-yt-dlp.mjs
+resources/
+build/
+
+# Made by scripts/setup-browser.mjs. These hold this computer's paths and the bridge token, so they must stay private.
+native-host/build/
+native-host/register.cmd
+native-host/unregister.cmd
+
+# Local tools and logs
+.impeccable/
+.claude/
+*.log

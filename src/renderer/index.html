@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'">
+  <title>Speed Downloader</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <svg class="app-mark" viewBox="0 0 14 14" width="16" height="16" aria-hidden="true"><circle cx="7" cy="1" r="0.9"/><circle cx="7" cy="3" r="0.9"/><circle cx="3" cy="5" r="0.9"/><circle cx="7" cy="5" r="0.9"/><circle cx="11" cy="5" r="0.9"/><circle cx="5" cy="7" r="0.9"/><circle cx="7" cy="7" r="0.9"/><circle cx="9" cy="7" r="0.9"/><circle cx="7" cy="9" r="0.9"/><circle cx="3" cy="13" r="0.9"/><circle cx="5" cy="13" r="0.9"/><circle cx="7" cy="13" r="0.9"/><circle cx="9" cy="13" r="0.9"/><circle cx="11" cy="13" r="0.9"/></svg>
+    <span class="brand">Speed Downloader</span>
+    <input id="search" type="search" data-i18n-placeholder="searchPlaceholder" data-i18n-label="searchPlaceholder" autocomplete="off" spellcheck="false">
+    <button id="open-settings" type="button" class="bar-button" data-i18n-title="settings"></button>
+  </header>
+  <div id="error" class="error" role="alert" hidden><span id="error-text" class="error-text"></span><button id="error-close" type="button" class="icon-button" data-i18n-title="closeNotice"></button></div>
+
+  <div class="shell">
+    <main class="page">
+      <section id="downloads-view" class="view">
+        <div class="view-head">
+          <h1 class="sr-only" data-i18n="sectionDownloads"></h1>
+          <form id="add-form" class="add" novalidate>
+            <input id="add-url" type="text" inputmode="url" data-i18n-placeholder="addPlaceholder" data-i18n-label="addLabel" autocomplete="off" spellcheck="false" required>
+            <button type="submit" class="accent" data-i18n="addButton"></button>
+            <button id="add-video" type="button" data-i18n="addVideo" data-i18n-title="addVideoNote"></button>
+            <button id="open-torrent" type="button" data-i18n="openTorrent"></button>
+          </form>
+          <div class="filter-row">
+            <div id="filters" class="filters" role="group" data-i18n-label="filtersLabel"></div>
+            <select id="type-filter" data-i18n-label="typeFilterLabel"></select>
+            <span id="shutdown-note" class="shutdown-note" data-i18n="shutdownArmed" hidden></span>
+            <div id="summary" class="summary" aria-live="polite"></div>
+          </div>
+        </div>
+        <div id="table" class="table"><div id="list-head" class="list-head" aria-hidden="true"><span hidden></span><span data-i18n="columnFile"></span><span data-i18n="columnSize"></span><span data-i18n="columnProgress"></span></div><div id="list" class="list"></div></div>
+        <div id="empty" class="empty"><p id="empty-title" class="empty-title"></p><p id="empty-body" class="empty-body"></p></div>
+      </section>
+
+      <section id="settings-view" class="view view-settings" hidden>
+        <div class="settings-scroll">
+          <button id="back" type="button" class="back"><span data-i18n="backToDownloads"></span></button>
+          <h1 id="settings-title" tabindex="-1" data-i18n="settings"></h1>
+
+          <h2 data-i18n="sectionDownloads"></h2>
+          <div class="panel">
+          <div class="card">
+            <div class="card-text"><div class="card-title" data-i18n="saveTo"></div><div id="folder-path" class="card-note"></div><div class="card-note" data-i18n="saveToNote"></div></div>
+            <button id="folder" type="button" data-i18n="change"></button>
+          </div>
+          <label class="card"><span class="card-title" data-i18n="concurrent"></span><select id="concurrent"></select></label>
+          <label class="card"><span class="card-title" data-i18n="connections"></span><select id="connections"></select></label>
+          <label class="card"><span class="card-title" data-i18n="speedLimit"></span><select id="limit"></select></label>
+          <label class="card">
+            <span class="card-text"><span class="card-title block" data-i18n="shutdownWhenDone"></span><span class="card-note block" data-i18n="shutdownNote"></span></span>
+            <span class="toggle"><input id="shutdown-enabled" type="checkbox" role="switch"></span>
+          </label>
+
+          </div>
+
+          <h2 data-i18n="sectionFolders"></h2>
+          <p class="section-note" data-i18n="foldersNote"></p>
+          <div id="category-folders" class="panel"></div>
+
+          <h2 data-i18n="sectionSchedule"></h2>
+          <div class="panel">
+          <label class="card">
+            <span class="card-text"><span class="card-title block" data-i18n="scheduleEnabled"></span><span class="card-note block" data-i18n="scheduleNote"></span></span>
+            <span class="toggle"><input id="schedule-enabled" type="checkbox" role="switch"></span>
+          </label>
+          <label class="card"><span class="card-title" data-i18n="scheduleStart"></span><input id="schedule-start" type="time" required></label>
+          <label class="card"><span class="card-title" data-i18n="scheduleEnd"></span><input id="schedule-end" type="time" required></label>
+
+          </div>
+
+          <h2 data-i18n="sectionBrowser"></h2>
+          <div class="panel">
+          <label class="card">
+            <span class="card-title" data-i18n="capture"></span>
+            <span class="toggle"><input id="capture" type="checkbox" role="switch"></span>
+          </label>
+          <label class="card card-stack">
+            <span class="card-title" data-i18n="extraTypes"></span>
+            <span class="card-note" data-i18n="extraNote"></span>
+            <input id="extra" type="text" data-i18n-placeholder="extraPlaceholder" spellcheck="false" autocomplete="off" maxlength="400">
+          </label>
+          <div class="card">
+            <div class="card-text"><div class="card-title" data-i18n="installExtension"></div><div class="card-note" data-i18n="installExtensionNote"></div></div>
+            <button id="extension-folder" type="button" data-i18n="openFolder"></button>
+          </div>
+          <div class="card">
+            <div class="card-text"><div class="card-title" data-i18n="skipOnce"></div><div class="card-note" data-i18n="skipOnceNote"></div></div>
+          </div>
+
+          </div>
+
+          <h2 data-i18n="sectionGeneral"></h2>
+          <div class="panel">
+          <label class="card"><span class="card-title" data-i18n="language"></span>
+            <select id="language"><option value="th">ไทย</option><option value="en">English</option></select>
+          </label>
+          <label class="card">
+            <span class="card-text"><span class="card-title block" data-i18n="autoStart"></span><span id="autostart-note" class="card-note block"></span></span>
+            <span class="toggle"><input id="autostart" type="checkbox" role="switch"></span>
+          </label>
+          </div>
+          <p id="version" class="version"></p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="menu" class="menu" role="menu" popover></div>
+  <script src="app.js"></script>
+</body>
+</html>
