@@ -30,6 +30,17 @@ export interface Messages {
   sectionDownloads: string;
   sectionBrowser: string;
   sectionGeneral: string;
+  sectionStats: string;
+  statsNote: (since: string) => string;
+  statsCompleted: string;
+  statsResumed: string;
+  statsResumedValue: (count: number, kept: string) => string;
+  statsLinks: string;
+  statsProblems: string;
+  statsScanned: string;
+  statsScannedValue: (scanned: number, threats: number) => string;
+  statsFilesValue: (count: number, bytes: string) => string;
+  statsTimes: (count: number) => string;
   saveTo: string;
   saveToNote: string;
   shutdownWhenDone: string;
@@ -77,6 +88,8 @@ export interface Messages {
   categories: Record<Category, string>;
   status: Record<DownloadStatus, string>;
   problems: Record<ProblemKind, string>;
+  /** A few words each, for the summary in Settings. */
+  problemShort: Record<ProblemKind, string>;
   pause: string;
   resume: string;
   more: string;
@@ -90,6 +103,10 @@ export interface Messages {
   showInFolder: string;
   removeFromList: string;
   moveToTrash: string;
+  scanPending: string;
+  scanClean: string;
+  scanThreatStatus: string;
+  threatFound: (name: string | null) => string;
   cancelAndDelete: string;
   connectionUnit: string;
   peersUnit: string;
@@ -135,6 +152,7 @@ export interface Messages {
   fileMissing: string;
   downloadAgain: string;
   errorOpenFile: string;
+  errorThreatOpen: string;
   errorOpenFolder: string;
   errorTrash: string;
   pickerOpen: string;
@@ -173,6 +191,17 @@ export const MESSAGES: Record<Language, Messages> = {
     sectionDownloads: 'การดาวน์โหลด',
     sectionBrowser: 'เบราว์เซอร์',
     sectionGeneral: 'ทั่วไป',
+    sectionStats: 'สรุปการทำงาน',
+    statsNote: (since) => `นับตั้งแต่ ${since} เก็บไว้ในเครื่องนี้เท่านั้น เป็นตัวเลขล้วน ไม่มีลิงก์หรือชื่อไฟล์`,
+    statsCompleted: 'โหลดเสร็จ',
+    statsResumed: 'โหลดต่อหลังแอปปิด',
+    statsResumedValue: (count, kept) => (count ? `${count} ไฟล์ ไม่ต้องโหลดซ้ำ ${kept}` : 'ยังไม่มี'),
+    statsLinks: 'ใส่ลิงก์ใหม่แทนลิงก์หมดอายุ',
+    statsProblems: 'ปัญหาที่เจอ',
+    statsScanned: 'ตรวจด้วย Microsoft Defender',
+    statsScannedValue: (scanned, threats) => (scanned ? `${scanned} ไฟล์ พบภัย ${threats} ไฟล์` : 'ยังไม่มี'),
+    statsFilesValue: (count, bytes) => (count ? `${count} ไฟล์ รวม ${bytes}` : 'ยังไม่มี'),
+    statsTimes: (count) => (count ? `${count} ครั้ง` : 'ยังไม่มี'),
     saveTo: 'บันทึกไฟล์ที่',
     saveToNote: 'มีผลกับไฟล์ที่เพิ่มใหม่ ไฟล์ที่เริ่มโหลดแล้วจะบันทึกที่เดิม',
     shutdownWhenDone: 'ปิดเครื่องเมื่อโหลดเสร็จ',
@@ -219,6 +248,7 @@ export const MESSAGES: Record<Language, Messages> = {
     filterProblem: 'ต้องดูแล',
     categories: { video: 'วิดีโอ', audio: 'เพลง', document: 'เอกสาร', program: 'โปรแกรม', archive: 'ไฟล์บีบอัด', other: 'อื่น ๆ' },
     status: { queued: 'รอคิว', probing: 'กำลังตรวจไฟล์', downloading: 'กำลังดาวน์โหลด', paused: 'หยุดชั่วคราว', completed: 'เสร็จแล้ว', attention: 'รอการตัดสินใจ', failed: 'ไม่สำเร็จ' },
+    problemShort: { 'link-expired': 'ลิงก์หมดอายุ', 'remote-changed': 'ไฟล์บน server เปลี่ยน', 'cannot-verify': 'ตรวจไฟล์ไม่ได้', 'not-found': 'ไม่พบไฟล์', network: 'เน็ตขัดข้อง', disk: 'ดิสก์', 'size-mismatch': 'ขนาดไม่ตรง', server: 'server ขัดข้อง', engine: 'ตัวโหลดขัดข้อง', 'video-drm': 'วิดีโอมี DRM', 'video-unsupported': 'เว็บไม่รองรับ', 'video-login': 'ต้องล็อกอิน' },
     problems: {
       'link-expired': 'Server ปฏิเสธลิงก์นี้ อาจหมดอายุหรือต้องล็อกอินใหม่ ใส่ลิงก์ใหม่เพื่อโหลดต่อจากเดิมได้',
       'remote-changed': 'ไฟล์บน server เปลี่ยนไปแล้ว ถ้าโหลดต่อไฟล์จะเสีย จึงต้องเริ่มใหม่',
@@ -246,6 +276,10 @@ export const MESSAGES: Record<Language, Messages> = {
     showInFolder: 'เปิดโฟลเดอร์',
     removeFromList: 'เอาออกจากรายการ',
     moveToTrash: 'ย้ายไฟล์ไปถังขยะ',
+    scanPending: 'กำลังตรวจด้วย Microsoft Defender',
+    scanClean: 'Defender ไม่พบภัย',
+    scanThreatStatus: 'พบภัย',
+    threatFound: (name) => `Microsoft Defender พบ${name ? ` ${name} ` : 'สิ่งที่อาจเป็นอันตราย'}ในไฟล์นี้ อย่าเปิดไฟล์ ย้ายไปถังขยะหรือเอาออกจากรายการได้`,
     cancelAndDelete: 'ยกเลิกและลบไฟล์ที่โหลดค้าง',
     connectionUnit: 'connection',
     peersUnit: 'peer',
@@ -291,6 +325,7 @@ export const MESSAGES: Record<Language, Messages> = {
     fileMissing: 'ไฟล์นี้ไม่อยู่ที่เดิมแล้ว อาจถูกย้ายหรือลบไป',
     downloadAgain: 'โหลดใหม่',
     errorOpenFile: 'เปิดไฟล์นี้ไม่ได้ เครื่องอาจยังไม่มีโปรแกรมที่เปิดไฟล์ชนิดนี้',
+    errorThreatOpen: 'ไม่เปิดไฟล์นี้ให้ เพราะ Microsoft Defender พบภัยในไฟล์',
     errorOpenFolder: 'เปิดโฟลเดอร์นี้ไม่ได้ อาจถูกย้ายหรือลบไป',
     errorTrash: 'ย้ายไฟล์ไปถังขยะไม่ได้ ไฟล์อาจเปิดอยู่ในโปรแกรมอื่น',
     pickerOpen: 'หน้าต่างเลือกไฟล์เปิดอยู่แล้ว ดูได้ที่แถบงาน',
@@ -335,6 +370,17 @@ export const MESSAGES: Record<Language, Messages> = {
     sectionDownloads: 'Downloads',
     sectionBrowser: 'Browser',
     sectionGeneral: 'General',
+    sectionStats: 'What the app has done',
+    statsNote: (since) => `Counted since ${since}, on this computer only. Numbers only, with no links or file names.`,
+    statsCompleted: 'Finished',
+    statsResumed: 'Continued after the app closed',
+    statsResumedValue: (count, kept) => (count ? `${count} ${count === 1 ? 'file' : 'files'}, ${kept} not downloaded again` : 'None yet'),
+    statsLinks: 'Expired links replaced',
+    statsProblems: 'Problems met',
+    statsScanned: 'Checked by Microsoft Defender',
+    statsScannedValue: (scanned, threats) => (scanned ? `${scanned} ${scanned === 1 ? 'file' : 'files'}, ${threats} flagged` : 'None yet'),
+    statsFilesValue: (count, bytes) => (count ? `${count} ${count === 1 ? 'file' : 'files'}, ${bytes} in all` : 'None yet'),
+    statsTimes: (count) => (count === 0 ? 'None yet' : count === 1 ? 'Once' : `${count} times`),
     saveTo: 'Save files to',
     saveToNote: 'Applies to newly added files. Files already started stay where they are.',
     shutdownWhenDone: 'Turn off the computer when done',
@@ -381,6 +427,7 @@ export const MESSAGES: Record<Language, Messages> = {
     filterProblem: 'Needs attention',
     categories: { video: 'Video', audio: 'Audio', document: 'Documents', program: 'Programs', archive: 'Archives', other: 'Other' },
     status: { queued: 'Queued', probing: 'Checking file', downloading: 'Downloading', paused: 'Paused', completed: 'Completed', attention: 'Needs a decision', failed: 'Failed' },
+    problemShort: { 'link-expired': 'expired link', 'remote-changed': 'file changed on the server', 'cannot-verify': 'could not verify', 'not-found': 'not found', network: 'network', disk: 'disk', 'size-mismatch': 'wrong size', server: 'server', engine: 'download engine', 'video-drm': 'DRM video', 'video-unsupported': 'unsupported site', 'video-login': 'needs a login' },
     problems: {
       'link-expired': 'The server refused this link. It may have expired or need a new login. Add a new link to continue from where it stopped.',
       'remote-changed': 'The file on the server has changed. Continuing would corrupt it, so it has to start again.',
@@ -408,6 +455,10 @@ export const MESSAGES: Record<Language, Messages> = {
     showInFolder: 'Show in folder',
     removeFromList: 'Remove from list',
     moveToTrash: 'Move file to Recycle Bin',
+    scanPending: 'Checking with Microsoft Defender',
+    scanClean: 'Defender found nothing',
+    scanThreatStatus: 'Threat found',
+    threatFound: (name) => `Microsoft Defender found ${name ?? 'something possibly harmful'} in this file. Do not open it. You can move it to the Recycle Bin or remove it from the list.`,
     cancelAndDelete: 'Cancel and delete partial file',
     connectionUnit: 'connections',
     peersUnit: 'peers',
@@ -453,6 +504,7 @@ export const MESSAGES: Record<Language, Messages> = {
     fileMissing: 'This file is no longer where it was saved. It may have been moved or deleted.',
     downloadAgain: 'Download again',
     errorOpenFile: 'This file could not be opened. There may be no program for this type of file.',
+    errorThreatOpen: 'This file will not be opened, because Microsoft Defender found a threat in it.',
     errorOpenFolder: 'This folder could not be opened. It may have been moved or deleted.',
     errorTrash: 'This file could not be moved to the Recycle Bin. Another program may have it open.',
     pickerOpen: 'A file picker is already open. You can find it on the taskbar.',

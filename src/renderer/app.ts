@@ -7,7 +7,8 @@ import { withinWindow } from '../shared/schedule.ts';
 import { startTracker } from '../shared/started.ts';
 import { linkState } from '../shared/extension-link.ts';
 import type { ExtensionStatus } from '../shared/extension-link.ts';
-import type { ApiState, DesktopInfo, Download, Language } from '../shared/types.ts';
+import type { ReliabilityStats } from '../shared/stats.ts';
+import type { ApiState, DesktopInfo, Download, Language, ProblemKind } from '../shared/types.ts';
 
 const api = (window as unknown as { api: DesktopApi }).api;
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -32,7 +33,7 @@ type TypeFilter = 'all' | FolderKind;
 
 const isTorrent = (d: Download) => d.kind === 'torrent';
 const isActive = (d: Download) => d.status === 'downloading' || d.status === 'probing' || d.status === 'queued' || d.status === 'paused';
-const hasProblem = (d: Download) => d.status === 'attention' || d.status === 'failed';
+const hasProblem = (d: Download) => d.status === 'attention' || d.status === 'failed' || d.scan === 'threat';
 
 const STATUS_FILTERS: Array<{ id: StatusFilter; label: (m: Messages) => string; test: (d: Download) => boolean }> = [
   { id: 'all', label: (m) => m.filterAll, test: () => true },
@@ -279,7 +280,8 @@ function renderPrimary(row: Row, d: Download): void {
 }
 
 function renderFixes(row: Row, d: Download, missing: boolean): void {
-  const key = `${d.problem?.kind ?? ''}:${missing}:${language}`;
+  const threat = d.status === 'completed' && d.scan === 'threat';
+  const key = `${d.problem?.kind ?? ''}:${missing}:${threat}:${language}`;
   if (row.fixesKey === key) return;
   row.fixesKey = key;
   const list: HTMLElement[] = [];
@@ -291,6 +293,9 @@ function renderFixes(row: Row, d: Download, missing: boolean): void {
   if (d.problem) add(m.restart, () => api.restart(d.id));
   if (missing) {
     add(m.downloadAgain, () => api.restart(d.id));
+    add(m.removeFromList, () => api.remove(d.id));
+  } else if (threat) {
+    add(m.moveToTrash, () => api.trashFile(d.id));
     add(m.removeFromList, () => api.remove(d.id));
   }
   row.fixes.replaceChildren(...list);
@@ -309,6 +314,7 @@ function sizeText(d: Download): string {
 }
 
 function detailsText(d: Download): string {
+  if (d.status === 'completed') return d.scan === 'pending' ? m.scanPending : d.scan === 'clean' ? m.scanClean : '';
   if (d.status !== 'downloading') return '';
   // While a transfer is only starting, "0 B/s" says nothing useful.
   const parts = d.speed > 0 ? [`${formatBytes(d.speed)}${m.perSecond}`] : [];
@@ -359,9 +365,10 @@ function renderRow(row: Row, d: Download): void {
   renderName(row.name, shownName);
   // Magnet links are long and carry trackers, so the tooltip shows the name instead.
   row.name.title = isTorrent(d) ? shownName : `${shownName}\n${d.url}`;
-  row.status.textContent = missing ? m.fileMissingStatus : waiting ? m.waitingSchedule(latest?.settings.scheduleStart ?? '') : m.status[d.status];
-  row.status.className = `status ${missing ? 'attention' : d.status}`;
-  row.root.className = `item ${d.status}`;
+  const threat = d.status === 'completed' && d.scan === 'threat';
+  row.status.textContent = missing ? m.fileMissingStatus : threat ? m.scanThreatStatus : waiting ? m.waitingSchedule(latest?.settings.scheduleStart ?? '') : m.status[d.status];
+  row.status.className = `status ${missing || threat ? 'attention' : d.status}`;
+  row.root.className = `item ${d.status}${threat ? ' threat' : ''}`;
   row.ext.textContent = fileType(d);
   row.size.textContent = sizeText(d);
   renderMeter(row, d);
@@ -375,8 +382,8 @@ function renderRow(row: Row, d: Download): void {
   const connections = !isTorrent(d) && d.connections > 0 ? `${d.connections} ${m.connectionUnit} · ` : '';
   row.sub.title = d.status === 'downloading' ? `${connections}${row.when.textContent}` : '';
 
-  row.extra.hidden = !d.problem && !missing;
-  row.problem.textContent = d.problem ? m.problems[d.problem.kind] : missing ? m.fileMissing : '';
+  row.extra.hidden = !d.problem && !missing && !threat;
+  row.problem.textContent = d.problem ? m.problems[d.problem.kind] : missing ? m.fileMissing : threat ? m.threatFound(d.threatName ?? null) : '';
   row.problem.title = d.problem?.message ?? '';
   renderPrimary(row, d);
   renderFixes(row, d, missing);
@@ -398,7 +405,8 @@ function openMenu(row: Row): void {
     items.push(b);
   };
   if (d.status === 'completed') {
-    add('open', m.openFile, () => checkFile(d.id, api.openFile(d.id)));
+    // A file Defender flagged is not offered for opening from here.
+    if (d.scan !== 'threat') add('open', m.openFile, () => checkFile(d.id, api.openFile(d.id)));
     add('folder', m.showInFolder, () => checkFile(d.id, api.showInFolder(d.id)));
     items.push(element('hr'));
     add('remove', m.removeFromList, () => api.remove(d.id));
@@ -545,6 +553,7 @@ function renderSettings(state: ApiState): void {
     const input = $<HTMLInputElement>(id);
     if (document.activeElement !== input) input.value = time;
   }
+  renderStats(state.stats);
   const extra = $<HTMLInputElement>('extra');
   if (document.activeElement !== extra) extra.value = state.settings.extraExtensions;
 }
@@ -557,6 +566,35 @@ function renderDesktop(): void {
   $('autostart-note').textContent = desktop.packaged ? m.autoStartNote : m.autoStartUnavailable;
   $('version').textContent = `Speed Downloader ${desktop.version}`;
   renderExtensionLinks(desktop.extension);
+}
+
+/** Plain numbers about what the app did, so its reliability can be seen rather than claimed. */
+function renderStats(stats: ReliabilityStats | undefined): void {
+  const list = $('stats');
+  if (!stats) return void list.replaceChildren();
+  const date = new Intl.DateTimeFormat(m.locale, { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(stats.since));
+  $('stats-note').textContent = m.statsNote(date);
+  const problems = Object.entries(stats.problems)
+    .filter(([, n]) => (n ?? 0) > 0)
+    .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
+    .map(([kind, n]) => `${m.problemShort[kind as ProblemKind] ?? kind} ${n}`)
+    .join(' · ');
+  const pairs: Array<[string, string]> = [
+    [m.statsCompleted, m.statsFilesValue(stats.completed, formatBytes(stats.completedBytes))],
+    [m.statsResumed, m.statsResumedValue(stats.resumedAfterClose, formatBytes(stats.bytesKept))],
+    [m.statsLinks, m.statsTimes(stats.linksReplaced)],
+    [m.statsScanned, m.statsScannedValue(stats.scanned, stats.threats)],
+    [m.statsProblems, problems || m.statsTimes(0)],
+  ];
+  list.replaceChildren(...pairs.map(([term, value]) => {
+    const row = element('div', 'stat');
+    const dt = element('dt');
+    dt.textContent = term;
+    const dd = element('dd');
+    dd.textContent = value;
+    row.append(dt, dd);
+    return row;
+  }));
 }
 
 /** One line per browser, so a missing or stale extension shows where the user already looks to install it. */

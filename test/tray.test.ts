@@ -4,13 +4,14 @@ import type { MenuItem, MenuItemConstructorOptions } from 'electron';
 import { linkFromClipboard, trayMenu, trayState } from '../src/main/tray-menu.ts';
 import type { TrayActions } from '../src/main/tray-menu.ts';
 import { MESSAGES } from '../src/shared/i18n.ts';
+import { emptyStats } from '../src/shared/stats.ts';
 import { MARK, markCoverage } from '../src/shared/mark.ts';
 
 import type { ApiState, Download, DownloadStatus } from '../src/shared/types.ts';
 
 const m = MESSAGES.en;
 const row = (id: string, status: DownloadStatus, extra: Partial<Download> = {}): Download => ({ id, url: 'https://a.example/f.zip', filename: `${id}.zip`, dir: 'D', status, totalBytes: 0, completedBytes: 0, speed: 0, connections: 0, acceptsRanges: true, validator: null, problem: null, referrer: null, userAgent: null, hasCookie: false, createdAt: 1, completedAt: status === 'completed' ? 1 : null, ...extra });
-const state = (downloads: Download[], settings: Partial<ApiState['settings']> = {}): ApiState => ({ downloads, engineReady: true, settings: { defaultDir: 'D', categoryDirs: {}, maxConcurrent: 3, connections: 16, minSplitSize: '4M', speedLimit: '0', shutdownWhenDone: false, scheduleEnabled: false, scheduleStart: '01:00', scheduleEnd: '06:00', browserCapture: true, extraExtensions: '', language: 'en', ...settings } });
+const state = (downloads: Download[], settings: Partial<ApiState['settings']> = {}): ApiState => ({ downloads, engineReady: true, stats: emptyStats(0), settings: { defaultDir: 'D', categoryDirs: {}, maxConcurrent: 3, connections: 16, minSplitSize: '4M', speedLimit: '0', shutdownWhenDone: false, scheduleEnabled: false, scheduleStart: '01:00', scheduleEnd: '06:00', browserCapture: true, extraExtensions: '', language: 'en', ...settings } });
 
 function fakeActions() {
   const calls: unknown[][] = [];
@@ -73,6 +74,7 @@ test('recent files are the newest five, with safe labels', () => {
 test('the tray icon state puts problems first', () => {
   assert.equal(trayState(state([])), 'idle');
   assert.equal(trayState(state([row('a', 'completed')])), 'idle');
+  assert.equal(trayState(state([{ ...row('a', 'completed'), scan: 'threat' }])), 'problem', 'a file Defender flagged shows the red dot');
   assert.equal(trayState(state([row('a', 'paused')])), 'paused');
   assert.equal(trayState(state([row('a', 'paused'), row('b', 'downloading')])), 'active');
   assert.equal(trayState(state([row('a', 'downloading'), row('b', 'failed')])), 'problem');

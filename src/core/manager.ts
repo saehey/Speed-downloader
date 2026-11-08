@@ -17,6 +17,9 @@ import { isSafeFormat, readVideoInfo, VideoError, VideoJob } from './video.ts';
 import type { VideoInfo, VideoProgress } from './video.ts';
 import type { SeenMedia } from './bridge.ts';
 import { markFromInternet } from './zone.ts';
+import type { Scanner } from './scan.ts';
+import { emptyStats, parseStats } from '../shared/stats.ts';
+import type { ReliabilityStats } from '../shared/stats.ts';
 
 export interface ManagerOptions {
   aria2Path: string;
@@ -38,6 +41,8 @@ export interface ManagerOptions {
   scheduleCheckMs?: number;
   /** Adds the Windows "Mark of the Web" to finished files, as a browser would. Off where Windows policy says not to keep it. */
   markDownloads?: boolean;
+  /** Checks each finished file, one at a time. Left out where Microsoft Defender is not available. */
+  scanner?: Scanner | null;
 }
 
 const MAX_ENGINE_RESTARTS = 5;
@@ -109,6 +114,11 @@ export class DownloadManager extends EventEmitter {
   private windowWasOpen = true;
   private finishedSinceArmed = false;
   private saveTimer: NodeJS.Timeout | null = null;
+  private readonly scanQueue: string[] = [];
+  private stats: ReliabilityStats = emptyStats(Date.now());
+  /** Bytes each unfinished file already had when the app started, for counting what a resume kept. */
+  private readonly heldAtStart = new Map<string, number>();
+  private scanning = false;
   private polling = false;
   private engineRestarts = 0;
   private closing = false;
@@ -128,11 +138,13 @@ export class DownloadManager extends EventEmitter {
     // Cookies for yt-dlp live only as long as its run. A crash could leave some, so clear them here.
     fs.rmSync(this.videoCookieDir, { recursive: true, force: true });
     const state = this.store.load();
+    this.stats = parseStats(state.stats, Date.now());
     // Waking up to a computer that turns itself off would be a nasty surprise, so this never carries over.
     this.settings = { ...this.settings, ...state.settings, shutdownWhenDone: false };
     for (const download of state.downloads) {
       const restored: Download = { ...download, speed: 0, connections: 0 };
       if (restored.status === 'downloading' || restored.status === 'probing') restored.status = 'queued';
+      if (restored.status !== 'completed' && restored.completedBytes > 0) this.heldAtStart.set(restored.id, restored.completedBytes);
       this.records.set(restored.id, restored);
       const encrypted = state.cookies[restored.id];
       if (encrypted && this.secrets.available) {
@@ -151,11 +163,13 @@ export class DownloadManager extends EventEmitter {
     this.windowWasOpen = this.windowOpen();
     this.scheduleTimer = setInterval(() => void this.applySchedule(), this.options.scheduleCheckMs ?? 15000);
     this.schedule();
+    // A scan cut short by closing the app runs again.
+    for (const record of this.records.values()) if (record.status === 'completed' && record.scan === 'pending') this.queueScan(record);
     this.changed();
   }
 
   state(): ApiState {
-    return { downloads: this.list(), settings: { ...this.settings }, engineReady: this.engine.running };
+    return { downloads: this.list(), settings: { ...this.settings }, engineReady: this.engine.running, stats: { ...this.stats, problems: { ...this.stats.problems } } };
   }
 
   list(): Download[] {
@@ -357,12 +371,16 @@ export class DownloadManager extends EventEmitter {
   async restart(id: string): Promise<void> {
     const record = this.require(id);
     await this.halt(record);
+    // Starting over keeps nothing, so it is not counted as a resume.
+    this.heldAtStart.delete(id);
     await this.deletePartial(record);
     record.validator = null;
     record.completedBytes = 0;
     record.totalBytes = 0;
     record.problem = null;
     record.completedAt = null;
+    delete record.scan;
+    delete record.threatName;
     record.status = 'queued';
     this.afterHalt();
   }
@@ -379,6 +397,7 @@ export class DownloadManager extends EventEmitter {
       this.cookies.set(id, request.cookie);
       record.hasCookie = !!request.cookie;
     }
+    if (record.problem?.kind === 'link-expired') this.stats.linksReplaced += 1;
     record.problem = null;
     record.status = 'queued';
     this.afterHalt();
@@ -692,6 +711,7 @@ export class DownloadManager extends EventEmitter {
       }
       this.markDownloaded(record, file);
       this.markCompleted(record, size);
+      this.queueScan(record);
       this.changed();
     });
     job.once('failed', (problem: { kind: ProblemKind; message: string }) => {
@@ -754,6 +774,7 @@ export class DownloadManager extends EventEmitter {
 
   private fail(record: Download, status: 'attention' | 'failed', kind: ProblemKind, message: string): void {
     const problem: Problem = { kind, message };
+    this.stats.problems[kind] = (this.stats.problems[kind] ?? 0) + 1;
     record.status = status;
     record.problem = problem;
     record.speed = 0;
@@ -802,7 +823,8 @@ export class DownloadManager extends EventEmitter {
     await this.engine.call('removeDownloadResult', gid).catch(() => {});
     if (record.kind === 'torrent') {
       if (record.filename) this.markDownloaded(record, path.join(record.dir, record.filename));
-      return this.markCompleted(record, record.completedBytes);
+      this.markCompleted(record, record.completedBytes);
+      return this.queueScan(record);
     }
     const part = this.partPath(record) as string;
     const expected = record.validator?.size ?? null;
@@ -826,6 +848,37 @@ export class DownloadManager extends EventEmitter {
     record.filename = finalName;
     this.markDownloaded(record, path.join(record.dir, finalName));
     this.markCompleted(record, actual);
+    this.queueScan(record);
+  }
+
+  /** Finished files wait their turn, so several large ones do not compete for the disk. */
+  private queueScan(record: Download): void {
+    if (!this.options.scanner || !record.filename) return;
+    record.scan = 'pending';
+    if (!this.scanQueue.includes(record.id)) this.scanQueue.push(record.id);
+    void this.runScans();
+  }
+
+  private async runScans(): Promise<void> {
+    if (this.scanning || !this.options.scanner) return;
+    this.scanning = true;
+    try {
+      for (let id = this.scanQueue.shift(); id !== undefined && !this.closing; id = this.scanQueue.shift()) {
+        const record = this.records.get(id);
+        if (!record || record.status !== 'completed' || record.scan !== 'pending' || !record.filename) continue;
+        const target = path.join(record.dir, record.filename);
+        const verdict = await this.options.scanner.scan(target);
+        // The file may have been removed or downloaded again while it was being checked.
+        if (this.records.get(id) !== record || record.status !== 'completed' || record.scan !== 'pending') continue;
+        record.scan = verdict.result;
+        if (verdict.result === 'threat' && verdict.name) record.threatName = verdict.name;
+        if (verdict.result !== 'unavailable') this.stats.scanned += 1;
+        if (verdict.result === 'threat') this.stats.threats += 1;
+        this.changed();
+      }
+    } finally {
+      this.scanning = false;
+    }
   }
 
   /** Done before the file shows as finished, so it is never opened without the mark. */
@@ -835,6 +888,14 @@ export class DownloadManager extends EventEmitter {
   }
 
   private markCompleted(record: Download, bytes: number): void {
+    this.stats.completed += 1;
+    this.stats.completedBytes += bytes;
+    const held = this.heldAtStart.get(record.id);
+    if (held !== undefined) {
+      this.stats.resumedAfterClose += 1;
+      this.stats.bytesKept += Math.min(held, bytes);
+      this.heldAtStart.delete(record.id);
+    }
     record.status = 'completed';
     this.finishedSinceArmed = true;
     record.completedAt = Date.now();
@@ -968,6 +1029,6 @@ export class DownloadManager extends EventEmitter {
     if (this.secrets.available) {
       for (const [id, value] of this.cookies) cookies[id] = this.secrets.encrypt(value);
     }
-    this.store.save({ version: 1, settings: this.settings, downloads: this.list(), cookies });
+    this.store.save({ version: 1, settings: this.settings, downloads: this.list(), cookies, stats: this.stats });
   }
 }

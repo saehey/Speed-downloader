@@ -8,7 +8,7 @@ The research behind its next features is in [docs/research](docs/research/README
 
 ## Install and open
 
-Run `release\SpeedDownloader-Setup-1.7.0.exe`. It installs for the current Windows user and includes aria2 and yt-dlp. The installer is not code-signed, so Windows SmartScreen may warn the first time it runs.
+Run `release\SpeedDownloader-Setup-1.8.0.exe`. It installs for the current Windows user and includes aria2 and yt-dlp. The installer is not code-signed, so Windows SmartScreen may warn the first time it runs.
 
 Open the app from any of these:
 
@@ -92,6 +92,14 @@ If a finished file is no longer where it was saved, clicking **Open file** or **
 
 Like a browser, the app marks each finished file as downloaded from the internet, so Windows SmartScreen checks programs and Office opens documents in Protected View. The mark records only the site and path the file came from, without the part after `?`, which can hold sign-in tokens. Files on disks that cannot hold the mark, such as FAT32 or exFAT, stay unmarked. If an administrator has turned off "Do not preserve zone information in file attachments", the app follows that and marks nothing.
 
+## Checked by Microsoft Defender
+
+When a file finishes, the app asks Microsoft Defender to check it, one file at a time and at low priority. The row says while the check runs and when Defender found nothing. If Defender finds a threat, the row says so and offers **Move file to Recycle Bin** or **Remove from list**, the file is not offered for opening, and the tray shows the red dot. The app reports a threat but does not delete the file itself, so a false alarm never costs you a file. Defender usually checks files as they are written anyway; this check makes the result visible and covers a computer where real-time protection is off. If another antivirus is in charge, Defender cannot run and the row says nothing.
+
+## What the app has done
+
+Settings ends with a summary counted on this computer only: files finished, files continued after the app closed and how much of them did not have to be downloaded again, expired links replaced, files Defender checked, and the problems met. It holds numbers only, never a link, a file name or a site.
+
 ## Language
 
 Choose Thai or English under **Settings > General**. The first run follows the Windows language.
@@ -117,6 +125,7 @@ In a development run, double-click `native-host\register.cmd` in File Explorer t
 | `npm run smoke` | The real window from start to finish. Moves one small test file to the Recycle Bin |
 | `npm run build`, then `electron test/worst-case-main.cjs` | The interface with worst-case data at several sizes |
 | `npm run build`, then `electron test/quality-main.cjs` | Contrast, control sizes, names and keyboard focus in the real window, in both themes |
+| `node --test test/scan.test.ts` | Reading Defender's answers, the scan queue, and the real Defender on a clean file. No harmful file is used |
 | `npm run build`, then `electron test/extension-link-main.cjs` | What Settings says about the extension, and the reload note, in the real window. Needs `npm run setup-browser` first |
 | `npm run build`, then `electron test/missing-file-main.cjs` | What buttons say when they cannot do their job, such as a moved file or a bad link, in the real window |
 | `node test/edge-check.mjs` | The browser hand-off in Edge with a temporary profile |

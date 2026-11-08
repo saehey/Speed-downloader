@@ -233,6 +233,12 @@ h1:focus { outline: 0; }
 /* The extension card says, per browser, whether the link works. Problems are worded, not only coloured. */
 .extension-links { margin: 6px 0 0; padding: 0; list-style: none; font-size: 0.75rem; line-height: 1.5; color: var(--ink-soft); }
 .extension-links:empty { display: none; }
+/* The summary reads as label and value, and the value drops below its label when space runs out. */
+.stats { margin: 0; padding: 0; }
+.stat { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.stat:last-child { border-bottom: 0; }
+.stat dt { color: var(--ink); }
+.stat dd { margin: 0; color: var(--ink-soft); font: 0.8125rem/1.5 var(--data); overflow-wrap: anywhere; }
 .extension-links li[data-state="problem"] { color: var(--warn); font-weight: 600; }
 
 /*
@@ -258,13 +264,14 @@ h1:focus { outline: 0; }
 .item.downloading .dots-fill::after { content: ""; position: absolute; top: 0; right: 2px; width: 7px; height: 7px; border-radius: 2px; background: var(--lime-dot); }
 .item.paused .dots-fill, .item.queued .dots-fill, .item.probing .dots-fill { --dot: var(--dot-rest); }
 .item.attention .dots-fill { --dot: var(--warn); }
-.item.failed .dots-fill { --dot: var(--bad); }
+.item.failed .dots-fill, .item.threat .dots-fill { --dot: var(--bad); }
 .percent { font: 600 0.75rem/1 var(--data); }
 .item.paused .percent, .item.queued .percent { color: var(--ink-soft); }
 
 .extra { grid-column: 2 / -1; margin-top: 6px; }
 .extra:empty { display: none; }
-.problem { max-width: 72ch; }
+/* Threat names such as "Trojan:Win32/Name.A!ml" have no spaces, so they may break anywhere. */
+.problem { max-width: 72ch; overflow-wrap: anywhere; }
 .fixes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .replace { display: flex; gap: 8px; margin-top: 8px; }
 .replace input { flex: 1; min-width: 0; }

@@ -43,6 +43,9 @@ const worst = () => [
   row({ filename: 'longest-size-text.zip', status: 'paused', totalBytes: 1073636966, completedBytes: 1073636966 - 1, completedAt: null }),
   row({ filename: 'overshoot.zip', status: 'downloading', totalBytes: 100, completedBytes: 142, speed: 1, connections: 1 }),
   row({ filename: 'old-file.pdf', totalBytes: 2048, createdAt: Date.UTC(2021, 0, 3), completedAt: Date.UTC(2021, 0, 4) }),
+  row({ filename: 'flagged-setup-with-a-long-name-for-wrapping.exe', totalBytes: 3e7, scan: 'threat', threatName: 'Trojan:Win32/AVeryLongThreatNameThatKeepsGoingWithoutSpaces.A!ml' }),
+  row({ filename: 'checked.zip', totalBytes: 3e7, scan: 'clean' }),
+  row({ filename: 'checking.iso', totalBytes: 3e9, scan: 'pending' }),
   row({ kind: 'torrent', filename: null, url: `magnet:?xt=urn:btih:${'a'.repeat(40)}&tr=${'https%3A%2F%2Ftracker.example.com%2Fannounce'.repeat(6)}`, status: 'downloading', totalBytes: 0, completedBytes: 0, connections: 0, speed: 0, completedAt: null }),
   row({ kind: 'torrent', filename: 'A very long torrent folder name with many words in it that keeps going for a while [2026] (complete edition)', status: 'downloading', totalBytes: 8e10, completedBytes: 4e9, connections: 87, speed: 2.3e7, completedAt: null }),
 ];
@@ -52,7 +55,7 @@ let dataset = worst();
 let language = 'th';
 const { ipcMain } = require('electron');
 ipcMain.on('fake-state', (event) => {
-  event.returnValue = { downloads: dataset, engineReady: true, settings: { defaultDir: base.dir, categoryDirs: { video: base.dir, torrent: 'E:\\Torrents' }, maxConcurrent: 3, connections: 8, minSplitSize: '4M', speedLimit: '0', shutdownWhenDone: true, scheduleEnabled: false, scheduleStart: '01:00', scheduleEnd: '06:00', browserCapture: true, extraExtensions: 'dat, nds, ' + 'abcdefgh, '.repeat(30), language } };
+  event.returnValue = { downloads: dataset, engineReady: true, stats: { since: Date.UTC(2021, 0, 3), completed: 123456, completedBytes: 9.9e15, resumedAfterClose: 98765, bytesKept: 8.8e14, linksReplaced: 4321, problems: { 'link-expired': 999, network: 888, disk: 777, 'remote-changed': 666, 'cannot-verify': 555, 'video-unsupported': 444, server: 333 }, scanned: 120000, threats: 12 }, settings: { defaultDir: base.dir, categoryDirs: { video: base.dir, torrent: 'E:\\Torrents' }, maxConcurrent: 3, connections: 8, minSplitSize: '4M', speedLimit: '0', shutdownWhenDone: true, scheduleEnabled: false, scheduleStart: '01:00', scheduleEnd: '06:00', browserCapture: true, extraExtensions: 'dat, nds, ' + 'abcdefgh, '.repeat(30), language } };
 });
 
 // Reports each visible element that spills out of its parent or the window.

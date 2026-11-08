@@ -1,4 +1,5 @@
 import type { ExtensionStatus } from './extension-link.ts';
+import type { ReliabilityStats } from './stats.ts';
 
 import type { FolderKind } from './categories.ts';
 
@@ -65,6 +66,13 @@ export interface Download {
   /** A file seen in the player has no useful name of its own, so it takes the page's title. */
   videoTitle?: string;
   videoOrigin?: string;
+  /**
+   * Microsoft Defender's check of the finished file. 'unavailable' means it could not run, for example
+   * because another antivirus is in charge. Missing on files from before 1.8.0 and while not finished.
+   */
+  scan?: 'pending' | 'clean' | 'threat' | 'unavailable';
+  /** Defender's name for what it found, such as "Trojan:Win32/Example". */
+  threatName?: string;
   /** Sound only, chosen beside a video in the browser, so it belongs with the audio files. */
   audioOnly?: boolean;
   /** The folder was asked for by name, so the per-type folders do not apply. */
@@ -115,4 +123,5 @@ export interface ApiState {
   downloads: Download[];
   settings: Settings;
   engineReady: boolean;
+  stats: ReliabilityStats;
 }

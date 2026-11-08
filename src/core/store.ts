@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Download, Settings } from '../shared/types.ts';
+import type { ReliabilityStats } from '../shared/stats.ts';
 
 /** Encrypts cookies at rest. When unavailable, cookies are kept in memory only. */
 export interface SecretStore {
@@ -20,6 +21,8 @@ export interface StoredState {
   settings: Partial<Settings>;
   downloads: Download[];
   cookies: Record<string, string>;
+  /** Added in 1.8.0, so older files have none. */
+  stats?: ReliabilityStats;
 }
 
 export class JsonStore {

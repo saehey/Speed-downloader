@@ -1,7 +1,7 @@
 import type { MenuItemConstructorOptions } from 'electron';
 import type { Messages } from '../shared/i18n.ts';
 import { withinWindow } from '../shared/schedule.ts';
-import type { ApiState } from '../shared/types.ts';
+import type { ApiState, Download } from '../shared/types.ts';
 
 export type TrayState = 'idle' | 'active' | 'paused' | 'problem';
 
@@ -24,12 +24,13 @@ const RECENT_FILES = 5;
 const MAX_LABEL = 44;
 
 const isRunning = (status: string) => status === 'downloading' || status === 'probing' || status === 'queued';
-const hasProblem = (status: string) => status === 'attention' || status === 'failed';
+/** A file Defender flagged needs the user as much as a failed download does. */
+const hasProblem = (d: Pick<Download, 'status' | 'scan'>) => d.status === 'attention' || d.status === 'failed' || d.scan === 'threat';
 
 /** What the tray icon should say. A problem matters most, because it needs the user to act. */
 export function trayState(state: ApiState): TrayState {
   const statuses = state.downloads.map((d) => d.status);
-  if (statuses.some(hasProblem)) return 'problem';
+  if (state.downloads.some(hasProblem)) return 'problem';
   if (statuses.some((s) => s === 'downloading' || s === 'probing')) return 'active';
   if (statuses.some((s) => s === 'paused' || s === 'queued')) return 'paused';
   return 'idle';
@@ -59,7 +60,7 @@ function menuLabel(text: string): string {
 export function trayMenu(state: ApiState, m: Messages, actions: TrayActions, clipboard: { url: string; label: string } | null, speedText: string, now = new Date()): MenuItemConstructorOptions[] {
   const { downloads, settings } = state;
   const downloading = downloads.filter((d) => d.status === 'downloading');
-  const problems = downloads.filter((d) => hasProblem(d.status)).length;
+  const problems = downloads.filter(hasProblem).length;
   const recent = downloads
     .filter((d) => d.status === 'completed' && d.filename)
     .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0))

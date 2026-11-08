@@ -8,6 +8,7 @@ import type { BrowserDownload, CaptureDecision } from '../core/capture.ts';
 import { DownloadManager } from '../core/manager.ts';
 import { probe } from '../core/probe.ts';
 import { policyKeepsZone } from '../core/zone.ts';
+import { defenderScanner, findDefender } from '../core/scan.ts';
 import { linkState, parseLinks, recordLink } from '../shared/extension-link.ts';
 import type { BrowserLink, BrowserName, ExtensionStatus } from '../shared/extension-link.ts';
 import type { SecretStore } from '../core/store.ts';
@@ -485,6 +486,7 @@ function registerIpc(): void {
     return 'ok';
   });
   handle(CHANNELS.openFile, async (id): Promise<FileCheck> => {
+    if (manager.get(asId(id))?.scan === 'threat') throw new Error(messages().errorThreatOpen);
     const file = completedPath(asId(id));
     if (!fs.existsSync(file)) return 'missing';
     if (RISKY_EXTENSIONS.test(file)) {
@@ -647,6 +649,11 @@ async function startBridge(): Promise<void> {
   sendDesktop();
 }
 
+function defenderScannerIfPresent() {
+  const exe = process.platform === 'win32' ? findDefender() : null;
+  return exe ? defenderScanner(exe) : null;
+}
+
 /** Follows the Windows policy on keeping "downloaded from the internet" marks. */
 function zoneMarksAllowed(): boolean {
   if (process.platform !== 'win32') return false;
@@ -675,6 +682,7 @@ async function boot(): Promise<void> {
     secrets: electronSecrets,
     defaultLanguage: defaultLanguage(app.getLocale()),
     markDownloads: zoneMarksAllowed(),
+    scanner: defenderScannerIfPresent(),
   });
   manager.on('changed', (state: ApiState) => {
     mainWindow?.webContents.send(CHANNELS.state, state);
