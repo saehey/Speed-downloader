@@ -8,7 +8,7 @@ The research behind its next features is in [docs/research](docs/research/README
 
 ## Install and open
 
-Run `release\SpeedDownloader-Setup-1.6.3.exe`. It installs for the current Windows user and includes aria2 and yt-dlp. The installer is not code-signed, so Windows SmartScreen may warn the first time it runs.
+Run `release\SpeedDownloader-Setup-1.7.0.exe`. It installs for the current Windows user and includes aria2 and yt-dlp. The installer is not code-signed, so Windows SmartScreen may warn the first time it runs.
 
 Open the app from any of these:
 
@@ -51,6 +51,8 @@ The installed app registers its browser connection each time it starts. The exte
 3. Click **Load unpacked** and choose the folder that opened.
 
 Turn off other download manager extensions, such as IDM's. Otherwise both try to take the same file.
+
+Under **Install the extension**, Settings shows when each browser's extension last connected. If the extension is older than the one in the app, which happens after an app update, the line says so and a notification asks you to click **Reload** on it. The app only learns this when the extension connects for a download or a video, so a browser that has not sent anything yet shows no line. If the browser connection could not be set up, Settings says that too.
 
 Common video, audio, document, program and archive files go to the app, and you can add more types in Settings. The browser keeps the download when the file is small, when the app cannot fetch the same file (single-use links, POST downloads), when the window is private, or when the app does not answer in time.
 
@@ -115,6 +117,7 @@ In a development run, double-click `native-host\register.cmd` in File Explorer t
 | `npm run smoke` | The real window from start to finish. Moves one small test file to the Recycle Bin |
 | `npm run build`, then `electron test/worst-case-main.cjs` | The interface with worst-case data at several sizes |
 | `npm run build`, then `electron test/quality-main.cjs` | Contrast, control sizes, names and keyboard focus in the real window, in both themes |
+| `npm run build`, then `electron test/extension-link-main.cjs` | What Settings says about the extension, and the reload note, in the real window. Needs `npm run setup-browser` first |
 | `npm run build`, then `electron test/missing-file-main.cjs` | What buttons say when they cannot do their job, such as a moved file or a bad link, in the real window |
 | `node test/edge-check.mjs` | The browser hand-off in Edge with a temporary profile |
 | `node test/browser-check.mjs` | A page for checking the hand-off by hand in any browser |

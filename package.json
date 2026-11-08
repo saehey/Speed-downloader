@@ -1,7 +1,7 @@
 {
   "name": "speed-downloader",
   "productName": "Speed Downloader",
-  "version": "1.6.3",
+  "version": "1.7.0",
   "private": true,
   "description": "A download manager for Windows, built on aria2.",
   "author": "saehey",

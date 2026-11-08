@@ -27,6 +27,7 @@ function load(saved: Record<string, unknown> = {}) {
     runtime: {
       id: 'self',
       lastError: undefined,
+      getManifest: () => ({ version: '9.9.9' }),
       onMessage: on('message'),
       connectNative: () => ({
         onMessage: { addListener: (fn: (m: unknown) => void) => { portListeners.message = fn; } },
@@ -133,7 +134,8 @@ test('a click sends what was seen, with cookies read only then, and in a form yt
   assert.equal(before, 0, 'nothing leaves the browser before the click');
   videoAsk(x, { type: 'video-info', url: 'https://site.example/watch', title: 'player frame' }, { id: 'self', tab: { id: 7, title: 'A film' } });
   await settle();
-  const sent = x.calls.posted[0] as { type: string; title: string; media: Array<{ url: string; cookie: string; referrer: string }> };
+  assert.equal(JSON.stringify(x.calls.posted[0]), JSON.stringify({ type: 'about', version: '9.9.9', userAgent: 'test' }), 'the extension says its version first, and nothing else about the user');
+  const sent = x.calls.posted[1] as { type: string; title: string; media: Array<{ url: string; cookie: string; referrer: string }> };
   assert.equal(sent.title, 'A film');
   assert.equal(sent.media[0]?.url, 'https://c.example/master.m3u8');
   assert.equal(sent.media[0]?.referrer, 'https://player.example/');
@@ -146,7 +148,7 @@ test('a video question reaches the app and its answer returns to the page', asyn
   const { answers, kept } = videoAsk(x, { type: 'video-info', url: 'https://v.example/w', referrer: 'https://r.example/', src: '' });
   assert.equal(kept, true, 'the answer comes later, so the channel stays open');
   await settle();
-  const sent = x.calls.posted[0] as { id: number; type: string; url: string };
+  const sent = x.calls.posted[1] as { id: number; type: string; url: string };
   assert.equal(sent.type, 'video-info');
   assert.equal(sent.url, 'https://v.example/w');
   x.portListeners.message!({ type: 'video-result', id: sent.id, ok: true, title: 'T', choices: [] });

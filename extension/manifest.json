@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Speed Downloader",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Sends downloads to the Speed Downloader app on this computer.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwUWnSoUywC/MPCYxRfuIsSPlQZ3fLr07sFQgG/3ozFfLl3Gtly/qLI4WTrSilRbSOp6BHzUjZfhNBA5Oev/Ib08XiHPr3bd0Chch5POF0pH5IXSOAFOSQwl+pYpatmOJLXGnDqfKmO8Y5WyxPCMQYeeR2UdmQFHRIgRKczIqqkB3U9RhLVzj59HYBl/Cplpu1Tw23Bpnvmpc3MGC4lp++/nvEbEcZ9IhiQg5VIsYn3dqKeXcKNRgRbgabhfbZ+zUoBfDSVJtCmMOvvZVUVs0JHhs0gtde4Sj+p1VBPq/spFOeaUk9T20l3m6Mv9RM0KImsJXs3dw6b7JnIKKfx2auQIDAQAB",
   "minimum_chrome_version": "109",

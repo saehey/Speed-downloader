@@ -12,8 +12,14 @@ const REGISTRY_KEYS = [
   `HKCU\\Software\\Microsoft\\Edge\\NativeMessagingHosts\\${HOST_NAME}`,
 ];
 
+/**
+ * The project folder in a development run. This file is bundled into dist/main.cjs, so it is one level
+ * up, whichever script started Electron; app.getAppPath() would point at a test script's folder.
+ */
+const projectRoot = (): string => path.resolve(__dirname, '..');
+
 export function extensionDir(): string {
-  return app.isPackaged ? path.join(process.resourcesPath, 'extension') : path.join(app.getAppPath(), 'extension');
+  return app.isPackaged ? path.join(process.resourcesPath, 'extension') : path.join(projectRoot(), 'extension');
 }
 
 function extensionOrigin(): string {
@@ -64,7 +70,7 @@ async function setUpInstalledBridge(): Promise<BridgeConfig> {
 
 function developmentBridge(): BridgeConfig | null {
   try {
-    return JSON.parse(fs.readFileSync(path.join(app.getAppPath(), 'native-host', 'build', 'bridge.json'), 'utf8')) as BridgeConfig;
+    return JSON.parse(fs.readFileSync(path.join(projectRoot(), 'native-host', 'build', 'bridge.json'), 'utf8')) as BridgeConfig;
   } catch {
     return null;
   }

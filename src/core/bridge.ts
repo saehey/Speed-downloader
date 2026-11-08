@@ -1,6 +1,8 @@
 import { timingSafeEqual } from 'node:crypto';
 import net from 'node:net';
 import type { BrowserDownload, CaptureDecision } from './capture.ts';
+import { browserOf, isVersion } from '../shared/extension-link.ts';
+import type { BrowserName } from '../shared/extension-link.ts';
 
 export interface BridgeConfig {
   pipe: string;
@@ -112,6 +114,11 @@ export interface BridgeHandlers {
   /** Lists a page's qualities. The extension sends this only after the user clicks its button. */
   videoInfo?(request: VideoRequest): Promise<Record<string, unknown>>;
   videoAdd?(request: VideoRequest): void;
+  /**
+   * An extension has connected. Extensions from 1.5.0 introduce themselves first; older ones do not,
+   * so their first real message stands in, with no version.
+   */
+  connected?(link: { browser: BrowserName; version: string | null }): void;
 }
 
 export function parseVideoMessage(message: Record<string, unknown>): VideoRequest | null {
@@ -171,6 +178,7 @@ export class BrowserBridge {
     this.sockets.add(socket);
     const reader = new FrameReader();
     let authenticated = false;
+    let introduced = false;
     const helloTimer = setTimeout(() => socket.destroy(), 5000);
     socket.on('error', () => socket.destroy());
     socket.on('close', () => {
@@ -192,6 +200,17 @@ export class BrowserBridge {
           clearTimeout(helloTimer);
           socket.write(encodeFrame({ type: 'ready' }));
           continue;
+        }
+        if (message.type === 'about') {
+          if (!introduced) {
+            introduced = true;
+            this.handlers.connected?.({ browser: browserOf(message.userAgent), version: isVersion(message.version) ? message.version : null });
+          }
+          continue;
+        }
+        if (!introduced && (message.type === 'download' || message.type === 'video-info' || message.type === 'video-add')) {
+          introduced = true;
+          this.handlers.connected?.({ browser: browserOf(message.userAgent), version: null });
         }
         if (message.type === 'download') void this.onDownload(socket, message);
         else if (message.type === 'video-info' || message.type === 'video-add') void this.onVideo(socket, message);

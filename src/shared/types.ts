@@ -1,3 +1,5 @@
+import type { ExtensionStatus } from './extension-link.ts';
+
 import type { FolderKind } from './categories.ts';
 
 export type DownloadStatus =
@@ -103,6 +105,7 @@ export interface DesktopInfo {
   autoStart: boolean;
   extensionDir: string | null;
   version: string;
+  extension: ExtensionStatus;
 }
 
 /** A place the tray can open the window on. */

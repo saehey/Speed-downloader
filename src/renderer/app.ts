@@ -5,6 +5,8 @@ import { MESSAGES } from '../shared/i18n.ts';
 import type { Messages } from '../shared/i18n.ts';
 import { withinWindow } from '../shared/schedule.ts';
 import { startTracker } from '../shared/started.ts';
+import { linkState } from '../shared/extension-link.ts';
+import type { ExtensionStatus } from '../shared/extension-link.ts';
 import type { ApiState, DesktopInfo, Download, Language } from '../shared/types.ts';
 
 const api = (window as unknown as { api: DesktopApi }).api;
@@ -554,6 +556,26 @@ function renderDesktop(): void {
   auto.disabled = !desktop.packaged;
   $('autostart-note').textContent = desktop.packaged ? m.autoStartNote : m.autoStartUnavailable;
   $('version').textContent = `Speed Downloader ${desktop.version}`;
+  renderExtensionLinks(desktop.extension);
+}
+
+/** One line per browser, so a missing or stale extension shows where the user already looks to install it. */
+function renderExtensionLinks(status: ExtensionStatus): void {
+  const list = $('extension-links');
+  const lines: Array<{ text: string; state: 'ok' | 'problem' | 'none' }> = [];
+  if (status.registered === false) lines.push({ text: m.extensionNotRegistered, state: 'problem' });
+  for (const link of status.links) {
+    lines.push(linkState(link, status.shippedVersion) === 'outdated'
+      ? { text: m.extensionOutdated(link.browser), state: 'problem' }
+      : { text: m.extensionSeen(link.browser, formatStamp(link.lastSeen)), state: 'ok' });
+  }
+  if (status.links.length === 0 && status.registered !== false) lines.push({ text: m.extensionNever, state: 'none' });
+  list.replaceChildren(...lines.map(({ text, state }) => {
+    const item = document.createElement('li');
+    item.textContent = text;
+    item.dataset.state = state;
+    return item;
+  }));
 }
 
 function emptyText(): [string, string] {
@@ -674,6 +696,10 @@ buildCategoryFolders();
 bindSettings();
 applyLanguage(language);
 api.onState(render);
+api.onDesktop((info) => {
+  desktop = info;
+  renderDesktop();
+});
 api.onNavigate((target) => {
   if (target === 'settings') return showView('settings');
   currentStatus = target;

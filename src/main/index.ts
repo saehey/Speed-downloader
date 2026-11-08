@@ -8,6 +8,8 @@ import type { BrowserDownload, CaptureDecision } from '../core/capture.ts';
 import { DownloadManager } from '../core/manager.ts';
 import { probe } from '../core/probe.ts';
 import { policyKeepsZone } from '../core/zone.ts';
+import { linkState, parseLinks, recordLink } from '../shared/extension-link.ts';
+import type { BrowserLink, BrowserName, ExtensionStatus } from '../shared/extension-link.ts';
 import type { SecretStore } from '../core/store.ts';
 import { CHANNELS } from '../shared/api.ts';
 import type { FileCheck } from '../shared/api.ts';
@@ -357,7 +359,62 @@ function desktopInfo(): DesktopInfo {
     autoStart: app.isPackaged && app.getLoginItemSettings({ args: [BACKGROUND_ARG] }).openAtLogin,
     extensionDir: extensionDir(),
     version: app.getVersion(),
+    extension: extensionStatus(),
   };
+}
+
+// ---- Extension link ---------------------------------------------------------------------------
+
+let bridgeRegistered: boolean | null = null;
+let browserLinks: BrowserLink[] | null = null;
+const outdatedNoticeShown = new Set<string>();
+const linksFile = () => path.join(app.getPath('userData'), 'extension-links.json');
+
+function shippedExtensionVersion(): string {
+  try {
+    return (JSON.parse(fs.readFileSync(path.join(extensionDir(), 'manifest.json'), 'utf8')) as { version: string }).version;
+  } catch {
+    return '';
+  }
+}
+
+function savedLinks(): BrowserLink[] {
+  if (browserLinks) return browserLinks;
+  try {
+    browserLinks = parseLinks(JSON.parse(fs.readFileSync(linksFile(), 'utf8')));
+  } catch {
+    browserLinks = [];
+  }
+  return browserLinks;
+}
+
+function extensionStatus(): ExtensionStatus {
+  return { registered: bridgeRegistered, shippedVersion: shippedExtensionVersion(), links: savedLinks() };
+}
+
+function sendDesktop(): void {
+  mainWindow?.webContents.send(CHANNELS.desktop, desktopInfo());
+}
+
+/** Records a connection, and asks once per run for an extension left behind by an app update to be reloaded. */
+function onExtensionConnected(browser: BrowserName, version: string | null): void {
+  browserLinks = recordLink(savedLinks(), browser, version, Date.now());
+  try {
+    fs.writeFileSync(linksFile(), JSON.stringify(browserLinks));
+  } catch {
+    // Only the Settings page uses this, so a failed write is not worth stopping for.
+  }
+  noteActivity(`extension-${browser.toLowerCase()}-${version ?? 'old'}`);
+  sendDesktop();
+  const link = browserLinks.find((l) => l.browser === browser) as BrowserLink;
+  const key = `${browser} ${version}`;
+  if (linkState(link, shippedExtensionVersion()) === 'outdated' && !outdatedNoticeShown.has(key) && Notification.isSupported()) {
+    outdatedNoticeShown.add(key);
+    const m = messages();
+    const note = new Notification({ title: m.extensionOutdatedTitle(browser), body: m.extensionOutdatedBody(browser) });
+    note.on('click', () => openAt('settings'));
+    note.show();
+  }
 }
 
 /**
@@ -531,8 +588,16 @@ function noteCaptured(body: string): void {
 }
 
 async function startBridge(): Promise<void> {
-  const config = await bridgeConfig();
+  let config;
+  try {
+    config = await bridgeConfig();
+  } catch (error) {
+    if (app.isPackaged) bridgeRegistered = false;
+    sendDesktop();
+    throw error;
+  }
   if (!config) return;
+  if (app.isPackaged) bridgeRegistered = true;
   bridge = new BrowserBridge(config, {
     decide: async (download) => {
       const settings = manager.state().settings;
@@ -570,8 +635,16 @@ async function startBridge(): Promise<void> {
       });
       noteCaptured(new URL(request.url).hostname);
     },
+    connected: ({ browser, version }) => onExtensionConnected(browser, version),
   });
-  await bridge.listen();
+  try {
+    await bridge.listen();
+  } catch (error) {
+    if (app.isPackaged) bridgeRegistered = false;
+    sendDesktop();
+    throw error;
+  }
+  sendDesktop();
 }
 
 /** Follows the Windows policy on keeping "downloaded from the internet" marks. */

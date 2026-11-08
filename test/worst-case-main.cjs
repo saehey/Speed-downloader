@@ -17,7 +17,8 @@ ipcRenderer.on('push', () => listener(state()));
 const noop = async () => {};
 contextBridge.exposeInMainWorld('api', {
   getState: async () => state(),
-  getDesktop: async () => ({ packaged: false, autoStart: false, extensionDir: 'x', version: '1.0.0' }),
+  getDesktop: async () => ({ packaged: true, autoStart: false, extensionDir: 'x', version: '1.0.0', extension: { registered: false, shippedVersion: '1.5.0', links: [{ browser: 'Chrome', lastSeen: Date.UTC(2021, 0, 3), version: '1.5.0' }, { browser: 'Edge', lastSeen: Date.now(), version: null }] } }),
+  onDesktop: () => {},
   onState: (l) => { listener = l; },
   onNavigate: () => {},
   add: noop, addVideo: noop, startNow: noop, clearCategoryFolder: noop, openTorrentFile: noop, pause: noop, resume: noop, resumeUnverified: noop, restart: noop, replaceUrl: noop, remove: noop, trashFile: noop, openFile: noop, showInFolder: noop, chooseFolder: noop, updateSettings: noop, setAutoStart: noop, openExtensionFolder: noop,

@@ -59,6 +59,12 @@ export interface Messages {
   extraNote: string;
   installExtension: string;
   installExtensionNote: string;
+  extensionNever: string;
+  extensionSeen: (browser: string, when: string) => string;
+  extensionOutdated: (browser: string) => string;
+  extensionNotRegistered: string;
+  extensionOutdatedTitle: (browser: string) => string;
+  extensionOutdatedBody: (browser: string) => string;
   openFolder: string;
   autoStart: string;
   autoStartNote: string;
@@ -196,6 +202,12 @@ export const MESSAGES: Record<Language, Messages> = {
     extraNote: 'รับ วิดีโอ เพลง เอกสาร โปรแกรม และไฟล์บีบอัดอยู่แล้ว คั่นชนิดไฟล์ด้วยจุลภาค',
     installExtension: 'ติดตั้ง extension',
     installExtensionNote: 'เปิด chrome://extensions หรือ edge://extensions เปิด Developer mode กด Load unpacked แล้วเลือกโฟลเดอร์นี้',
+    extensionNever: 'ยังไม่เคยเชื่อมต่อ หลังติดตั้งแล้ว ลองโหลดไฟล์จากเบราว์เซอร์ 1 ไฟล์เพื่อเช็ก',
+    extensionSeen: (browser, when) => `${browser}: เชื่อมต่อล่าสุด ${when}`,
+    extensionOutdated: (browser) => `${browser}: extension เป็นรุ่นเก่า กด Reload ที่ extension ใน ${browser === 'Edge' ? 'edge' : 'chrome'}://extensions`,
+    extensionNotRegistered: 'ลงทะเบียนการเชื่อมต่อกับเบราว์เซอร์ไม่สำเร็จ ลองปิดแอปจากเมนู tray แล้วเปิดใหม่',
+    extensionOutdatedTitle: (browser) => `extension ใน ${browser} ต้องโหลดใหม่`,
+    extensionOutdatedBody: (browser) => `แอปอัปเดตแล้วแต่ extension ยังเป็นรุ่นเก่า กด Reload ที่ ${browser === 'Edge' ? 'edge' : 'chrome'}://extensions`,
     openFolder: 'เปิดโฟลเดอร์',
     autoStart: 'เปิดพร้อม Windows',
     autoStartNote: 'ทำงานเงียบ ๆ ใน system tray',
@@ -352,6 +364,12 @@ export const MESSAGES: Record<Language, Messages> = {
     extraNote: 'Video, audio, documents, programs and archives are already included. Separate types with commas.',
     installExtension: 'Install the extension',
     installExtensionNote: 'Open chrome://extensions or edge://extensions, turn on Developer mode, click Load unpacked, then choose this folder.',
+    extensionNever: 'Not connected yet. After installing it, download one file in the browser to check.',
+    extensionSeen: (browser, when) => `${browser}: last connected ${when}`,
+    extensionOutdated: (browser) => `${browser}: the extension is out of date. Click Reload on it in ${browser === 'Edge' ? 'edge' : 'chrome'}://extensions`,
+    extensionNotRegistered: 'The browser connection could not be set up. Quit the app from the tray menu and open it again.',
+    extensionOutdatedTitle: (browser) => `Reload the extension in ${browser}`,
+    extensionOutdatedBody: (browser) => `The app was updated but the extension was not. Click Reload on it in ${browser === 'Edge' ? 'edge' : 'chrome'}://extensions`,
     openFolder: 'Open folder',
     autoStart: 'Start with Windows',
     autoStartNote: 'Runs quietly in the system tray',

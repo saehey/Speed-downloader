@@ -46,6 +46,24 @@ function freePort(): Promise<number> {
  * holding the secret is deleted once aria2 is up. No session file is used, because aria2 writes
  * request headers, including cookies, into it as plain text.
  */
+/**
+ * The config holds aria2's RPC secret and is removed once aria2 has read it. If the app was stopped
+ * in that moment, the file stays behind; one app runs per profile, so any other copy is stale.
+ */
+export function removeStaleConfs(stateDir: string, keep: string): void {
+  let names: string[];
+  try {
+    names = fs.readdirSync(stateDir);
+  } catch {
+    return;
+  }
+  for (const name of names) {
+    if (!/^aria2-\d+\.conf$/.test(name)) continue;
+    const file = path.join(stateDir, name);
+    if (file !== keep) fs.rmSync(file, { force: true });
+  }
+}
+
 export class Aria2Engine extends EventEmitter {
   private readonly options: EngineOptions;
   private child: ChildProcess | null = null;
@@ -69,6 +87,7 @@ export class Aria2Engine extends EventEmitter {
     this.secret = randomBytes(24).toString('hex');
     fs.mkdirSync(this.options.stateDir, { recursive: true });
     const confPath = path.join(this.options.stateDir, `aria2-${process.pid}.conf`);
+    removeStaleConfs(this.options.stateDir, confPath);
     const conf: Record<string, string | number> = {
       'enable-rpc': 'true',
       'rpc-listen-port': this.port,

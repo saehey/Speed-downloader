@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { CHANNELS } from '../shared/api.ts';
 import type { DesktopApi } from '../shared/api.ts';
-import type { ApiState, NavigateTarget } from '../shared/types.ts';
+import type { ApiState, DesktopInfo, NavigateTarget } from '../shared/types.ts';
 
 const api: DesktopApi = {
   getState: () => ipcRenderer.invoke(CHANNELS.getState),
@@ -29,6 +29,9 @@ const api: DesktopApi = {
   },
   onNavigate: (listener) => {
     ipcRenderer.on(CHANNELS.navigate, (_event, target: NavigateTarget) => listener(target));
+  },
+  onDesktop: (listener) => {
+    ipcRenderer.on(CHANNELS.desktop, (_event, info: DesktopInfo) => listener(info));
   },
 };
 

@@ -54,6 +54,8 @@ let idleTimer = null;
 function getPort() {
   if (port) return port;
   port = chrome.runtime.connectNative(HOST);
+  // Lets the app tell an extension that needs reloading after an update. Nothing about the user is sent.
+  port.postMessage({ type: 'about', version: chrome.runtime.getManifest().version, userAgent: navigator.userAgent });
   port.onMessage.addListener((message) => {
     if (message.type === 'decision') decide(message.id, message.decision, message.reason);
     else if (message.type === 'video-result') finishVideo(message.id, message);

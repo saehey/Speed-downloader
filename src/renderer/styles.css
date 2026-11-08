@@ -230,6 +230,10 @@ h1:focus { outline: 0; }
 .status.downloading { padding: 0 8px; border-radius: 9px; background: var(--lime); color: var(--lime-ink); font-weight: 600; }
 .status.downloading + *::before { content: none; }
 .size { font: 0.75rem/1.4 var(--data); color: var(--ink-soft); white-space: nowrap; }
+/* The extension card says, per browser, whether the link works. Problems are worded, not only coloured. */
+.extension-links { margin: 6px 0 0; padding: 0; list-style: none; font-size: 0.75rem; line-height: 1.5; color: var(--ink-soft); }
+.extension-links:empty { display: none; }
+.extension-links li[data-state="problem"] { color: var(--warn); font-weight: 600; }
 
 /*
   Dot meter: rounded squares drawn as one tile from gradients and repeated, so its cost does not

@@ -29,6 +29,7 @@ export interface DesktopApi {
   openExtensionFolder(): Promise<void>;
   onState(listener: (state: ApiState) => void): void;
   onNavigate(listener: (target: NavigateTarget) => void): void;
+  onDesktop(listener: (info: DesktopInfo) => void): void;
 }
 
 export const CHANNELS = {
@@ -54,4 +55,5 @@ export const CHANNELS = {
   openExtensionFolder: 'desktop:open-extension-folder',
   state: 'downloads:state',
   navigate: 'window:navigate',
+  desktop: 'desktop:changed',
 } as const;
